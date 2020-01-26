@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd">
+	<flow name="ListOfCountryNamesGroupedByContinentFlow" doc:id="304f1172-b881-4c2a-9f47-bf17da577257" >
+		<http:listener doc:name="Listener" doc:id="41d6e8b8-50d3-4eed-850f-67fd5c29cf5d" config-ref="HTTP_Listener_config" path="/countrynames"/>
+		<wsc:consume operation="ListOfCountryNamesGroupedByContinent" doc:name="Consume ListOfCountryNamesGroupedByContinent Operation" doc:id="7ab89f51-b8db-4bbb-aae3-9f49011b1ba6" config-ref="Web_Service_Consumer_Config"/>
+		<ee:transform doc:name="Transform Message into json" doc:id="7ed41328-7ba2-4240-a337-fa0da9e006ad" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.body]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logged ListOfCountryNamesGroupedByContinent (A)" doc:id="565cce45-8545-4b55-a2b4-195bfbc12d41" message="#[payload]"/>
+		<ee:transform doc:name="filtered country details" doc:id="81ce12af-3f27-4e3d-9cb9-ac5354a94a30" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.ListOfCountryNamesGroupedByContinentResponse.ListOfCountryNamesGroupedByContinentResult.*tCountryCodeAndNameGroupedByContinent.*CountryCodeAndNames.*tCountryCodeAndName filter ((item, index) -> item.sName == "Cameroon" or item.sName == "Suriname" or item.sName == "India" or item.sName == "Mongolia" or item.sName == "Belarus" or item.sName == "Hungary" or item.sName == "Germany")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger filtered country details (B)" doc:id="728740eb-4f4a-43b8-afbe-6fede0c349a9" message="#[payload]"/>
+		<ee:transform doc:name="soap body" doc:id="1f492fad-03f4-4d67-a8ef-b04ab8e056eb">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns web http://www.oorsprong.org/websamples.countryinfo
+---
+web#FullCountryInfo:{
+    (payload map {
+            web#sCountryISOCode : $.sISOCode
+        })
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<wsc:consume doc:name="Consume FullCountryInfo (C) LIMITATION: accepts only 1 country at a time" doc:id="99e7f366-87fe-4f80-b46e-1f14d77c9e3c" config-ref="Web_Service_Consumer_Config" operation="FullCountryInfo">
+		</wsc:consume>
+		<logger level="INFO" doc:name="Logger response" doc:id="0aa49e16-d2bf-4baf-9b1f-d963e553454c" message="#[%dw 2.0
+output application/json
+---
+payload]" />
+		<ee:transform doc:name="Transform Message" doc:id="24f5a4ab-6f7e-4d6c-b6da-6c1949b0c881" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="633a1bd2-84d4-4a58-8615-79ea628eeea9" >
+				<ee:transform doc:name="Transform Message" doc:id="dfcd511d-8c86-4e48-a0ad-bd67d6042a7f" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "error occured"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="FullCountryInfoAllCountriesFlow" doc:id="50bb4bf0-ba56-413b-99ea-1dea5f085bb0" >
+		<http:listener doc:name="Listener" doc:id="d4be8104-a807-4073-a262-0213d3c0212a" config-ref="HTTP_Listener_config" path="/consume2"/>
+		<wsc:consume operation="FullCountryInfoAllCountries" doc:name="Consume FullCountryInfoAllCountries" doc:id="6c77c037-bddc-4341-a8ea-135308bbfc42" config-ref="Web_Service_Consumer_Config"/>
+		<ee:transform doc:name="Transform Response into json" doc:id="a58824ba-fb98-4f12-a776-1a84349becf0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="0255340f-664e-41e8-8a3b-1c4ea1d85dfa" >
+				<ee:transform doc:name="Transform Message" doc:id="81dfbec4-9c3d-445f-b179-317fb07e9da0" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "error occured"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+</mule>
